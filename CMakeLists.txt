@@ -4,4 +4,9 @@ project(NoArch C)
 set(TARGET noarch.out)
 add_executable(${TARGET} main.c)
 
-add_compile_options(-Wall -lbfd)
+target_compile_options(${TARGET}
+  PRIVATE
+  -Wall
+)
+
+target_link_libraries(${TARGET} bfd)
