@@ -39,7 +39,9 @@ typedef struct INSNS {
 } insns, *p_insns;
 
 /* Method to decode the insns op(u32) into sf, opc, code, hw, imm and rd
- * according to the struct above */
+ * according to the struct above
+ * https://github.com/CAS-Atlantic/AArch64-Encoding/blob/master/binary%20encodding.pdf
+ * for further details */
 void
 decode_op(u32 op, u32 *sf, u32 *opc, u32 *code, u32 *hw, u32 *imm, u32 *rd) {
   *sf   = (op & 0x80000000) >> 31;    // byte  [31]
@@ -70,6 +72,34 @@ create_insns(void) {
   p_insns pin = (p_insns)malloc(sizeof(insns));
   //set_insns(pin, op);
   return pin;
+}
+
+/* The opcode identification technique is the same as
+ * the one binutils uses.
+ * We use the bitwise-AND to find bits that contain the
+ * opcode of the instruction and identify through there.
+ * More info at
+ * https://developer.arm.com/documentation/ddi0487/latest/ */
+typedef struct {
+  u32 value, mask; // identify insns if op&mask == value
+  char *disas;
+} opcode;
+
+static opcode opcodes[] = {
+  {0x10000000, 0x9f000000, "adr"},
+  {0x52800000, 0x7f800000, "movz"},
+  {0x00000000, 0x00000000, ""}
+};
+
+char*
+get_opcode(u32 insn) {
+  opcode *op = opcodes;
+  while(op->value) {
+    if ((op->mask & insn) == op->value)
+      return op->disas;
+    op++;
+  }
+  return "unidentified instruction";
 }
 
 int
@@ -108,8 +138,10 @@ main (int argc, char *argv[]) {
         printf(" ");
       }
       set_insns(pin, buf+i);
-      printf("\tsf:%01x opc:%01x code:%01x hw:%01x imm:%02x reg:%01x",
+      printf("\tsf:%01x opc:%01x code:%02x hw:%01x imm:%04x reg:%01x",
           pin->sf, pin->opc, pin->code, pin->hw, pin->imm, pin->rd);
+      char *s = get_opcode(buf_to_u32(buf+i));
+      printf("\t%s", s);
       printf("\n");
     }
   } while ((s = s->next) != NULL);
