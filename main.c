@@ -9,6 +9,8 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long int u64;
 
+
+/* Helper functions for binary operations */
 void
 print_binary(u8 n) {
   for (int i = 1 << 7; i > 0; i >>= 1) {
@@ -26,23 +28,26 @@ buf_to_u32(u8 op[]) {
   return u;
 }
 
+/* Struct containing decoded op(mov) information */
 typedef struct INSNS {
   u32 sf   : 1;
   u32 opc  : 2;
   u32 code : 6;
   u32 hw   : 2;
   u32 imm  : 16;
-  u32 rd   : 5;      // length = 32 bits
+  u32 rd   : 5;
 } insns, *p_insns;
 
+/* Method to decode the insns op(u32) into sf, opc, code, hw, imm and rd
+ * according to the struct above */
 void
 decode_op(u32 op, u32 *sf, u32 *opc, u32 *code, u32 *hw, u32 *imm, u32 *rd) {
-  *sf   = (op & 2147483648) >> 31;
-  *opc  = (op & 1610612736) >> 29;
-  *code = (op & 528482304)  >> 23;
-  *hw   = (op & 6291456)    >> 21;
-  *imm  = (op & 2097120)    >> 5;
-  *rd   = op & 31;
+  *sf   = (op & 0x80000000) >> 31;    // byte  [31]
+  *opc  = (op & 0x60000000) >> 29;    // bytes [30-29]
+  *code = (op & 0x1f800000) >> 23;    // bytes [28-23]
+  *hw   = (op & 0x00600000) >> 21;    // bytes [22-21]
+  *imm  = (op & 0x001fffe0) >> 5;     // bytes [20-5]
+  *rd   = (op & 0x0000001f);          // bytes [0-4]
 }
 
 void
