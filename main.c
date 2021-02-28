@@ -9,6 +9,8 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long int u64;
 
+#define MIN(X,Y) ((X) < (Y) ? (X) : (Y))
+
 /* Helper functions for binary operations */
 void
 print_binary(u8 n) {
@@ -172,7 +174,7 @@ main (int argc, char *argv[]) {
     return -1;
   }
 
-  u8 buf[4][32];
+  u8 *buf[4];
   p_insns pin = create_insns();
 
   int j=0;
@@ -182,8 +184,21 @@ main (int argc, char *argv[]) {
     printf("\n");
     printf("[%d] %s\t%x\t%x\t%x\n",
         s->id, s->name, (u32)s->vma, (u32)s->lma, (u32)s->size);
-    bfd_get_section_contents(input_bfd, s, buf[j], 0, sizeof(buf[j]));
-    for (int i=0; i<sizeof(buf[j]); i+=4) {
+    
+    buf[j] = (u8 *)malloc(s->size);
+    if(buf[j] == NULL) {
+      fprintf(stderr, "Failed to malloc size: %d bytes\n", s->size);
+      goto end;
+    }
+
+    if(bfd_get_section_contents(input_bfd, s, buf[j], 0, s->size)
+        == FALSE) {
+      bfd_perror("BFD GET SECTION CONTENTS ERROR\n");
+      j++;
+      goto end;
+    }
+    
+    for (int i=0; i<s->size; i+=4) {
       printf("%02x %02x %02x %02x\t%c.%c.%c.%c\t",
           buf[j][i], buf[j][i+1], buf[j][i+2], buf[j][i+3],
           buf[j][i], buf[j][i+1], buf[j][i+2], buf[j][i+3]);
@@ -201,6 +216,9 @@ main (int argc, char *argv[]) {
     j++;
   } while ((s = s->next) != NULL);
 
+end:
+  for(int i=0; i<j; i++)
+    free(buf[i]);
   free(pin);
   bfd_close(input_bfd);
 
