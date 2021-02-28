@@ -182,8 +182,8 @@ main (int argc, char *argv[]) {
   struct bfd_section *s = input_bfd->sections;
   do {
     printf("\n");
-    printf("[%d] %s\t%x\t%x\t%x\n",
-        s->id, s->name, (u32)s->vma, (u32)s->lma, (u32)s->size);
+    printf("[%d] %s\t%x\t%x\t%x\t%x\n",
+        s->id, s->name, (u32)s->vma, (u32)s->lma, (u32)s->size, (u32)s->flags);
     
     buf[j] = (u8 *)malloc(s->size);
     if(buf[j] == NULL) {
@@ -206,11 +206,15 @@ main (int argc, char *argv[]) {
         print_binary(buf[j][i+k]);
         printf(" ");
       }
-      set_insns(pin, buf[j]+i);
-      //printf("\tsf:%01x opc:%01x code:%02x hw:%01x imm:%04x reg:%01x",
-      //    pin->sf, pin->opc, pin->code, pin->hw, pin->imm, pin->rd);
-      insns_t ins = get_opcode(buf_to_u32(buf[j]+i));
-      printf("\t%s", disas[ins]);
+      
+      if(s->flags & SEC_CODE){
+        set_insns(pin, buf[j]+i);
+        //printf("\tsf:%01x opc:%01x code:%02x hw:%01x imm:%04x reg:%01x",
+        //    pin->sf, pin->opc, pin->code, pin->hw, pin->imm, pin->rd);
+        insns_t ins = get_opcode(buf_to_u32(buf[j]+i));
+        printf("\t%s", disas[ins]);
+      }
+      
       printf("\n");
     }
     j++;
