@@ -9,11 +9,10 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long int u64;
 
-
 /* Helper functions for binary operations */
 void
 print_binary(u8 n) {
-  for (int i = 1 << 7; i > 0; i >>= 1) {
+  for (int i = 1; i < (1 << 7); i <<= 1) {
     (n & i) ? printf("1") : printf("0");
   }
 }
@@ -28,8 +27,17 @@ buf_to_u32(u8 op[]) {
   return u;
 }
 
+/* Gets len bits at index [i,j] (i > j) */
+u32
+u32_get_bits(u32 n, int i, int j) {
+  u32 big = (1 << (i+1));
+  u32 sml = (1 << (j));
+  return (n & (big-sml)) >> j;
+}
+
+//#if 0
 /* Struct containing decoded op(mov) information */
-typedef struct INSNS {
+typedef struct {
   u32 sf   : 1;
   u32 opc  : 2;
   u32 code : 6;
@@ -44,7 +52,8 @@ typedef struct INSNS {
  * for further details */
 void
 decode_op(u32 op, u32 *sf, u32 *opc, u32 *code, u32 *hw, u32 *imm, u32 *rd) {
-  *sf   = (op & 0x80000000) >> 31;    // byte  [31]
+  //*sf   = (op & 0x80000000) >> 31;    // byte  [31]
+  *sf   = u32_get_bits(op, 31, 1);
   *opc  = (op & 0x60000000) >> 29;    // bytes [30-29]
   *code = (op & 0x1f800000) >> 23;    // bytes [28-23]
   *hw   = (op & 0x00600000) >> 21;    // bytes [22-21]
@@ -66,11 +75,34 @@ set_insns(p_insns pin, u8 op[]) {
   pin->imm = imm;
   pin->rd = rd;
 }
+//#endif
+#if 0
+/* Contains the information inside an insns in the form of
+ * name: value (example: sf: 1) */
+typedef struct {
+  char *name;
+  u32 val;
+} symbol, *p_symbol;
+
+/* Contains the whole encoding of the u32 insns */
+typedef struct {
+  u32 u_insns;
+  p_symbol syms;
+  int n_syms;
+} insns, *p_insns;
+
+void set_insns(p_insns pin, u32 u_insns) {
+  pin->u_insns = u_insns;
+}
+#endif
 
 p_insns
 create_insns(void) {
   p_insns pin = (p_insns)malloc(sizeof(insns));
   //set_insns(pin, op);
+  //pin->n_syms = 32;
+  //pin->syms = (p_symbol)malloc(sizeof(symbol) * pin->n_syms);
+  //memset(pin->syms, 0, sizeof())
   return pin;
 }
 
@@ -80,18 +112,36 @@ create_insns(void) {
  * opcode of the instruction and identify through there.
  * More info at
  * https://developer.arm.com/documentation/ddi0487/latest/ */
+typedef enum {
+  ADR,
+  MOV,
+  MOVZ,
+  SVC,
+  UNK
+} insns_t;
+
 typedef struct {
   u32 value, mask; // identify insns if op&mask == value
-  char *disas;
+  insns_t disas;
 } opcode;
 
 static opcode opcodes[] = {
-  {0x10000000, 0x9f000000, "adr"},
-  {0x52800000, 0x7f800000, "movz"},
-  {0x00000000, 0x00000000, ""}
+  {0x10000000, 0x9f000000, ADR},
+  {0x2a0003e0, 0x7fe0ffe0, MOV},
+  {0x52800000, 0x7f800000, MOVZ},
+  {0xd4000001, 0xffe0001f, SVC},
+  {0x00000000, 0x00000000, UNK}
 };
 
-char*
+static char *disas[] = {
+  "adr{immlo:[30-29],immhi:[23-5],rd:[4-0]}",
+  "mov{sf:[31],rm:[20-16],rd:[4-0]",
+  "movz{sf:[31],hw:[22-21],imm16:[20-5],rd:[4-0]}",
+  "svc{imm16:[20-5]}",
+  "unidentified instruction"
+};
+
+insns_t
 get_opcode(u32 insn) {
   opcode *op = opcodes;
   while(op->value) {
@@ -99,7 +149,7 @@ get_opcode(u32 insn) {
       return op->disas;
     op++;
   }
-  return "unidentified instruction";
+  return UNK;
 }
 
 int
@@ -122,28 +172,33 @@ main (int argc, char *argv[]) {
     return -1;
   }
 
-  u8 buf[32];
+  u8 buf[4][32];
   p_insns pin = create_insns();
+
+  int j=0;
 
   struct bfd_section *s = input_bfd->sections;
   do {
     printf("\n");
     printf("[%d] %s\t%x\t%x\t%x\n",
         s->id, s->name, (u32)s->vma, (u32)s->lma, (u32)s->size);
-    bfd_get_section_contents(input_bfd, s, buf, 0, 16);
-    for (int i=0; i<sizeof(buf); i+=4) {
-      printf("%02x %02x %02x %02x\t", buf[i], buf[i+1], buf[i+2], buf[i+3]);
-      for (int j=0; j<4; j++) {
-        print_binary(buf[i+j]);
+    bfd_get_section_contents(input_bfd, s, buf[j], 0, sizeof(buf[j]));
+    for (int i=0; i<sizeof(buf[j]); i+=4) {
+      printf("%02x %02x %02x %02x\t%c.%c.%c.%c\t",
+          buf[j][i], buf[j][i+1], buf[j][i+2], buf[j][i+3],
+          buf[j][i], buf[j][i+1], buf[j][i+2], buf[j][i+3]);
+      for (int k=0; k<4; k++) {
+        print_binary(buf[j][i+k]);
         printf(" ");
       }
-      set_insns(pin, buf+i);
-      printf("\tsf:%01x opc:%01x code:%02x hw:%01x imm:%04x reg:%01x",
-          pin->sf, pin->opc, pin->code, pin->hw, pin->imm, pin->rd);
-      char *s = get_opcode(buf_to_u32(buf+i));
-      printf("\t%s", s);
+      set_insns(pin, buf[j]+i);
+      //printf("\tsf:%01x opc:%01x code:%02x hw:%01x imm:%04x reg:%01x",
+      //    pin->sf, pin->opc, pin->code, pin->hw, pin->imm, pin->rd);
+      insns_t ins = get_opcode(buf_to_u32(buf[j]+i));
+      printf("\t%s", disas[ins]);
       printf("\n");
     }
+    j++;
   } while ((s = s->next) != NULL);
 
   free(pin);
