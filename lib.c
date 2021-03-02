@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <capstone/capstone.h>
 
+#include "lib.h"
+
 void print_cs_arm64_detail(csh handle, cs_detail *detail) {
   
   if (detail->regs_read_count > 0) {

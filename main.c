@@ -5,6 +5,8 @@
 #include <bfd.h>
 #include <capstone/capstone.h>
 
+#include "lib.h"
+
 int
 main (int argc, char *argv[]) {
 
