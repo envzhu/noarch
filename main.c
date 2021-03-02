@@ -1,24 +1,9 @@
-#define PACKAGE "bfd"
 #include <stdio.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <bfd.h>
 #include <capstone/capstone.h>
-
-typedef unsigned char u8;
-typedef unsigned short u16;
-typedef unsigned int u32;
-typedef unsigned long long int u64;
-
-u32
-buf_to_u32(u8 op[]) {
-  u32 u = 0;
-  u += op[0];
-  u += (1 << 8) * op[1];
-  u += (1 << 16) * op[2];
-  u += (1 << 24) * op[3];
-  return u;
-}
 
 int
 main (int argc, char *argv[]) {
@@ -48,8 +33,9 @@ main (int argc, char *argv[]) {
     fprintf(stderr, "Failed to open capstone in ARM64v8 MODE\n");
     return -1;
   }
+  cs_option(handle, CS_OPT_DETAIL, CS_OPT_ON);
 
-  u8 *buf[4];
+  uint8_t *buf[4];
   int sec=0;
 
   struct bfd_section *s = input_bfd->sections;
@@ -58,7 +44,7 @@ main (int argc, char *argv[]) {
     printf("[%d] %s\t%lx\t%lx\t%lx\t%x\n",
         s->id, s->name, s->vma, s->lma, s->size, s->flags);
 
-    buf[sec] = (u8 *)malloc(s->size);
+    buf[sec] = (uint8_t *)malloc(s->size);
     if(buf[sec] == NULL) {
       fprintf(stderr, "Failed to malloc size: %lu bytes\n", s->size);
       goto end;
@@ -78,16 +64,18 @@ main (int argc, char *argv[]) {
       printf("\n");
 
       if (s->flags & SEC_CODE) {
-        count = cs_disasm(handle, buf[sec]+i, 3, 0x1000, 0, &insn);
+        count = cs_disasm(handle, &buf[sec][i], 4, 0x1000, 0, &insn);
         if (count > 0) {
           size_t j;
           for (j = 0; j < count; j++) {
-            printf("0x%"PRIx64":\t%s\t\t%s\n", insn[j].address, insn[j].mnemonic,
-            insn[j].op_str);
-          }
-        cs_free(insn, count);
+            printf("0x%"PRIx64":\t%s\t\t%s\n",
+                insn[j].address, insn[j].mnemonic, insn[j].op_str);
+            
+            print_cs_arm64_detail(handle, insn[j].detail);
+            }
+          cs_free(insn, count);
         } else
-        printf("ERROR: Failed to disassemble given code!\n");
+          printf("ERROR: Failed to disassemble given code!\n");
       }
     }
     sec++;
