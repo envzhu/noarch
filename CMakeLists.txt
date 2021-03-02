@@ -9,4 +9,4 @@ target_compile_options(${TARGET}
   -Wall
 )
 
-target_link_libraries(${TARGET} bfd)
+target_link_libraries(${TARGET} bfd capstone)
