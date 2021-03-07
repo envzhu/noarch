@@ -60,13 +60,12 @@ main (int argc, char *argv[]) {
     }
 
     for (int i=0; i<s->size; i+=4) {
-      printf("%02x %02x %02x %02x\t%c.%c.%c.%c\t",
-          buf[sec][i], buf[sec][i+1], buf[sec][i+2], buf[sec][i+3],
+      printf("%02x %02x %02x %02x",
           buf[sec][i], buf[sec][i+1], buf[sec][i+2], buf[sec][i+3]);
-      printf("\n");
 
       if (s->flags & SEC_CODE) {
-        count = cs_disasm(handle, &buf[sec][i], 4, 0x1000, 0, &insn);
+        printf("\n");
+        count = cs_disasm(handle, &buf[sec][i], 4, s->vma+i, 0, &insn);
         if (count > 0) {
           size_t j;
           for (j = 0; j < count; j++) {
@@ -74,10 +73,15 @@ main (int argc, char *argv[]) {
                 insn[j].address, insn[j].mnemonic, insn[j].op_str);
             
             print_cs_arm64_detail(handle, insn[j].detail);
-            }
+            translate_from_arm64_to_x64(insn[j].detail);
+          }
           cs_free(insn, count);
         } else
           printf("ERROR: Failed to disassemble given code!\n");
+      } else {  
+        printf("\t%c.%c.%c.%c",
+            buf[sec][i], buf[sec][i+1], buf[sec][i+2], buf[sec][i+3]);
+        printf("\n");
       }
     }
     sec++;
