@@ -4,30 +4,32 @@
 
 #include "lib.h"
 
-typedef enum {
-  movz,
-  adr,
-  svc,
-  mov
-} mnem;
 
-static char* trans_table[] = {
-  "movq",
-  "movq",
-  "syscall",
-  "movq"
+typedef char *(trans_insn_fn_t)(cs_insn *insn);
+
+trans_insn_fn_t trans_mov;
+trans_insn_fn_t trans_movz;
+trans_insn_fn_t trans_adr;
+trans_insn_fn_t trans_svc;
+
+static trans_insn_fn_t *trans_insn_fn_table[] = {
+  trans_mov,
+  trans_movz,
+  trans_adr,
+  trans_svc
 };
 
 static char* insn_table[] = {
+  "mov",
   "movz",
   "adr",
-  "svc",
-  "mov"
+  "svc"
 };
 
 void translate_from_arm64_to_x64(cs_insn *insn) {
   char t_insn[64];
   unsigned int reg;
+
   int i;
   for (i=0; i<4; ++i) {
     if (strcmp(insn->mnemonic, insn_table[i]) == 0)
@@ -36,13 +38,26 @@ void translate_from_arm64_to_x64(cs_insn *insn) {
   if (i == 4)
     return;
 
-  switch(i) {
-    case movz:
-      break;
-    default:
-      break;
-  }
+  printf("\tTranslated : %s\n", trans_insn_fn_table[i](insn)); 
+   
+}
+/*
+convert_reg_from_arm64_to_x64(){
+
+}
+*/
+char *trans_mov(cs_insn *insn) {
   
+  return "movq";
+}
+char *trans_movz(cs_insn *insn) {
+  return "movq";
+}
+char *trans_adr(cs_insn *insn) {
+  return "movq";
+}
+char *trans_svc(cs_insn *insn) {
+  return "syscall";
 }
 
 void print_cs_arm64_detail(csh handle, cs_detail *detail) {

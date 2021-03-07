@@ -73,7 +73,7 @@ main (int argc, char *argv[]) {
                 insn[j].address, insn[j].mnemonic, insn[j].op_str);
             
             print_cs_arm64_detail(handle, insn[j].detail);
-            translate_from_arm64_to_x64(insn[j].detail);
+            translate_from_arm64_to_x64(&insn[j]);
           }
           cs_free(insn, count);
         } else
