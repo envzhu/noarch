@@ -1,7 +1,49 @@
 #include <stdio.h>
+#include <string.h>
 #include <capstone/capstone.h>
 
 #include "lib.h"
+
+typedef enum {
+  movz,
+  adr,
+  svc,
+  mov
+} mnem;
+
+static char* trans_table[] = {
+  "movq",
+  "movq",
+  "syscall",
+  "movq"
+};
+
+static char* insn_table[] = {
+  "movz",
+  "adr",
+  "svc",
+  "mov"
+};
+
+void translate_from_arm64_to_x64(cs_insn *insn) {
+  char t_insn[64];
+  unsigned int reg;
+  int i;
+  for (i=0; i<4; ++i) {
+    if (strcmp(insn->mnemonic, insn_table[i]) == 0)
+      break;
+  }
+  if (i == 4)
+    return;
+
+  switch(i) {
+    case movz:
+      break;
+    default:
+      break;
+  }
+  
+}
 
 void print_cs_arm64_detail(csh handle, cs_detail *detail) {
   
@@ -27,7 +69,7 @@ void print_cs_arm64_detail(csh handle, cs_detail *detail) {
     cs_arm64_op *op = &(detail->arm64.operands[n]);
     switch(op->type) {
       case ARM64_OP_REG:
-        printf("\t\toperands[%u].type: REG = %s\n", n, cs_reg_name(handle, op->reg));
+        printf("\t\toperands[%u].type: REG = %s (%u)\n", n, cs_reg_name(handle, op->reg), op->reg);
         break;
       case ARM64_OP_IMM:
         printf("\t\toperands[%u].type: IMM = 0x%x\n", n, op->imm);
